@@ -1,5 +1,6 @@
-# MS project by Raj
-This is Raj's MS project under the supervision of Dr. Roy
+# A project on exploring the passkey authentication flow in a web app
+
+The starting point of this project is what Raj has done in his MS project under the supervision of Dr. Roy
 
 # Getting Started with Create React App
 
