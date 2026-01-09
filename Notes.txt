@@ -1,0 +1,19 @@
+First, the plan is to secure the web app. When opening localhost:5200/tictactoe, there is no security and it should be locked behind authentication (for testing purposes).
+
+Then, I will start learning about classes of authentication and web apps, then make definitions and lists here
+
+    Notes from 1/8 meeting:
+-Focus on definitions of classes of web apps
+-may not be React, could be HTML or PHP instead. React is not the whole picture. We want one app to represent the general
+-Modern web apps have 2 classes: SPA and Next.js; understand the difference between the 2, might be where the rendering happens (client/server sides).
+-JWT is used for distributed app (different parts from different servers). It is just the token.
+
+JWT vs session cookie: major difference. JWT is more modern, session is classical. Same purpose, different implementations. JWT have a refresh and active token. In JWT, the server does not need to keep session/state info in the database. Makes it more flexible.
+These answers will dictate which sample to choose for representative case.
+
+In the web app, there is nothing stopping the user from going straight to tictactoe. No security for the app, needs a token system (session cookie or JWT). First focus is to make the app secure.
+When I am learning/changing something big, take notes. Especially on roadblocks.
+
+look for projects with licenses in readme -> ask chatgpt about projects we can use. Look at creative commons or GPL licenses. Usually must acknowledge source.
+
+can make a list of sample projects (or web apps in general) of each class type, and note characteristics. Mostly focus on gaining a clear understanding so that my selection is good, so it is a representative set. Also need to talk about this in the paper, will be informative. Know characteristics.
