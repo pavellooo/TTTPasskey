@@ -17,3 +17,11 @@ When I am learning/changing something big, take notes. Especially on roadblocks.
 look for projects with licenses in readme -> ask chatgpt about projects we can use. Look at creative commons or GPL licenses. Usually must acknowledge source.
 
 can make a list of sample projects (or web apps in general) of each class type, and note characteristics. Mostly focus on gaining a clear understanding so that my selection is good, so it is a representative set. Also need to talk about this in the paper, will be informative. Know characteristics.
+
+
+    Updates:
+    1/9/26: 
+-Refactored URL system to have a default landing page, then passkey login is behind /login and tictactoe remains the same
+-Also added "protected routes" and an isAuthenticated flag that is passed and updated on the backend. I don't 100% understand this so I will explore and test this further in my free time
+-With these changes, I believe the /tictactoe page is better protected. Need to do more testing to see if it is 100% secure
+My next goal is to implement a session token or JWT system to preserve login info for a short period of time

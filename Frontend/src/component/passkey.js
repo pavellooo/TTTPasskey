@@ -2,7 +2,7 @@ import React, { useState} from 'react';
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios';
 
-function Passkey() {
+function Passkey( { setIsAuthenticated } ) { //accepting setIsAuthenticated as prop
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoginView, setIsLoginView] = useState(true);
@@ -119,6 +119,7 @@ function Passkey() {
       });
 
       if (response.data.success) {
+        setIsAuthenticated(true); //update authentication state
         navigate('/tictactoe', { state: { username: email } }); // Redirect to Tic Tac Toe on success
       } else {
         setError('Authentication failed: ' + response.data.message || 'Unknown error');
