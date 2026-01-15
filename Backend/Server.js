@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const crypto = require('crypto');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const base64url = require('base64url');
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
