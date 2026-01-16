@@ -1,0 +1,10 @@
+{
+  "name": "project-passkey",
+  "version": "1.0.0",
+  "description": "Passkey authentication with Tic Tac Toe game",
+  "scripts": {
+    "deploy": "node build-and-deploy.js",
+    "start-backend": "npm start --prefix Backend",
+    "start-frontend": "npm start --prefix Frontend"
+  }
+}
