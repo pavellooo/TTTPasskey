@@ -28,17 +28,64 @@ My next goal is to implement a session token or JWT system to preserve login inf
 
     1/14: 
 -got new laptop, transferred system over and got MYSQL updated and working here as well
+
     1/15:
--started with improving the old system to give a JWT token, for session perserverance. Uses the JsonWebToken library, and saves it in local storage on frontend and database on backend
--the JWT library works well with webauthn, so very few issues
--Note that this particular JWT token system is based on a secret key that is kept on the backend, that needs changed before "deployment"
--On Frontend, it just adds a request to the backend upon loading to verify the token
-
-
-
+-started with improving the old system to give a JWT token for session persistence. 
+-Uses the JsonWebToken library, creates a token based on your email and userID (encrypted). 
+-Frontend saves and references this token (and user email for game display), Backend recalculates for verification
+-Note that this particular JWT token system is based on a secret key that is kept on the backend, which is very insecure. 
+Real web apps use an environment variable that store randomly-generated crypto keys. They may be static for as long as the server runs, or rotated often (every 30 days for example)
+-Frontend saves it for 7 days, very easy to change (Server.js "expiresIn" tag)
+-also tweaked/refactored URL handling system to take this token into account (e.g. skip login page if token exists)
+All of this was very simple and had very minimal issues thanks to github copilot, took not even an hour
+    New routing system:
+-if token exists: if you go to login page, automatically route to tictactoe. Can also directly access tictactoe
+-if no token exists: login page works as normal, and you cannot access tictactoe
+-Clicking "log out" on tictactoe page deletes JWT data (token/email) from browser memory
 
     New command for building/deployment:
 //this script builds frontend and copies build files into backend automatically:
 npm run deploy 
 //Then just start the backend:
 npm run start-backend
+
+    Web app type research
+11-ish categories of web apps (static, dynamic, single-page, multi-page, etc.), often overlap/combine
+4 main classifications of how web apps are supplied to users: server-side rendering, client-side rendering, static-site generation, incremental static regeneration
+-CSR: renders mostly on client's browser. Server sends empty HTML file and JS code, then frontend uses JS (React) to build page
+-SSR: Server generates full HTML/webpage and sends them to client as webpage is navigated, and minimal JS/React use. Low end computers load faster
+-SSG: Generate static HTML pages at build time, then serve those pages to client upon navigation. Makes Client and Server very fast, but no dynamic content (so no login/authentication)
+-ISR: combine SSG and CSR, some pages are static (cached) but others are dynamic. Not necessarily feasible for our project, usually for massive websites that change semi-often
+The rendering options are dependent on the type of app, and change how fast it loads on client and server side
+For authentication, SSR and CSR most relevant, and often includes a hybrid approach. SSR for authentication, CSR for things past the authentication (tictactoe)
+source: https://www.youtube.com/watch?v=p02AIAoImzU
+
+Combining the categories and classficiations into most common implementations for our project:
+-Classic server-rendered apps (Rails, PHP, Django): "stateful", the active user's Session ID stored in database/cache.
+Authenticates using session cookies (cookie has an ID attached to request, server checks ID for identifying user)
+-SPA (React/Vue/Angular): Often "stateless", where the server doesn't keep track of user session states. 
+Instead, a JWT is given to user and stored in their browser. System adds this token to all API calls for authorization on each request
+This passkey project is a React SPA. JWT token is a server signature, not session ID. It may be weak to XSS because JWT is on browser
+-SSR with React (Next.js): sort of a hybrid of SSR and CSR. Generate complete HTML (including JS bundles for interactions), send to user but display main page HTML immediately. 
+Then start downloading/setup of React components in the background ("hydration"), so the client-side page is interactive.
+Custom HTML can be provided via authentication using a cookie. If no cookie exists, route the user to the login page, which doesn't require the authentication data.
+-Backend for Frontend (BFF): most secure but most complex. BFF is on the server side. 
+Adds a small layer between SPA and the main API. SPA never sees token. SPA talks to the BFF ("private server"), BFF talks to identity provider.
+BFF uses Secure Session Cookies to talk to SPA, but uses JWTs (server-side) to talk to the main API. Keeps tokens off browser, making token theft nearly impossible.
+In simpler terms, the BFF connects the user's session cookie to their token on the backend, as well as keeping the frontend simple and handling complex calls/data on the server side.
+
+Elaborating on notes from meeting:
+-Technically there are 4 main types of web apps instead of the 2 we thought (SPA with React, and SSR with Next.js). Discussed above.
+-"JWT has refresh and active token": apps use both an access token (short-lived, sent with API requests) and a refresh token (long-lived, used to get new access token, stored securely)
+Current version of this app only has the long-lived token, real apps use both.
+-"JWT is more modern, session is classical. Same purpose, different implementations ... In JWT, the server does not need to keep session/state info in the database. Makes it more flexible.":
+I agree with this mostly, although they are widely both used right now. JWTs are faster and better for larger widely-spread website systems, where contacting multiple web servers for authentication is costly.
+For small web apps with just one database, some people recommend the session ID system for simplicity and fast processing. 
+-https://www.reddit.com/r/webdev/comments/1ibe6u1/jwt_vs_cookies/ 
+
+Another key factor we need to keep in mind is how the JWT/session cookie is stored. localstorage is vulnerable to attack. 
+Best practice might involve a combination of HttpOnly cookie + JWT. JWT Token rotation is also important, but not too difficult to add to a simple web app.
+HttpOnly cookies are a special type of cookie that cannot be accessed by client-side scripts, preventing XSS. They are sent with HTTP requests. Set/supplied/managed by server-side.
+
+Next step: revise/confirm my understanding/definitions, then start gathering candidates and categorize them
+
