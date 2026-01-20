@@ -6,5 +6,8 @@
     "deploy": "node build-and-deploy.js",
     "start-backend": "npm start --prefix Backend",
     "start-frontend": "npm start --prefix Frontend"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7"
   }
 }

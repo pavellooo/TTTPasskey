@@ -89,3 +89,23 @@ HttpOnly cookies are a special type of cookie that cannot be accessed by client-
 
 Next step: revise/confirm my understanding/definitions, then start gathering candidates and categorize them
 
+1/17 Meeting notes:
+-try making a diagram on word document or Latex (on portal called overleaf.com)
+-overleaf if used for professional research paper and documents. He will share template, and I will fill it
+
+Background of paper: mention types of web apps, and experience with passkey flow. A few lines about JWT.
+End goal of the project: Try at least 2 representative web apps, add passkey flow to both. First was this one, a web app with no authentication beforehand, and was added by Raj. Then I added JWT
+-now, we are also adding a session management technique. After exploring, explain if JWT is a good option for fulfilling that goal. If yes, make JWT handle the session.
+In the next week, work on figuring out if JWT is the right way to manage the session. If yes, go ahead to make it secure, and take notes/documentation. So that we are ready to write this experience as a research paper.
+
+-what kind of Key is used in JWT? Symmetric. Might be a MAC situation, need to figure out exactly what it is. I thought it was encrypt/decrypt.
+-have a diagram on how JWT is working, in the context of my app. Sign and verification. Know where the key is
+-remember main question: Is JWT a viable option for securing the session? If so, learn about JWT and draw the diagram.
+
+1/19
+-the current JWT system is not secure. Key is hardcoded and weak, token is transmitted without security, and uses HS256 (hash mac symmetric key algorithm)
+-Started with moving secrets to environment variables in the project. Installed the "dotenv" library, and added a ".env" file
+-JWT may be symmetric (Hash MAC, current) or asymmetric (RS 256). Hash Mac works, but if the secret leaks then an attacker could bypass everything. 
+In real distributed servers, there is often 1 authentication server that keeps the private key and the rest use the public key to verify.
+-converted and refactored code to use cookies. 
+Ideally, it also should have HTTPS instead of HTTP, but that will require a valid SSL certificate and converting server over. Need to do more research first.

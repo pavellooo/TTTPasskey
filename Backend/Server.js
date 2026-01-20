@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -5,21 +6,27 @@ const crypto = require('crypto');
 const mysql = require('mysql2');
 const base64url = require('base64url');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const cookieParser = require('cookie-parser')
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
-
+//load JWT keys from environment variables
+const privateKey = process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
+const publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
 
 const app = express();
-app.use(cors());
+app.use(cors({ credentials: true })); // Allow credentials for cookies
 app.use(bodyParser.json());
+app.use(cookieParser()); // Use cookie-parser middleware
 
+//note: pretty sure this next line is redundant and can be removed. Keeping for now in case it breaks something else
 const users = {}; // Store users by email
-
+//this may be bad practice, note to self: remove the "|| 'name'" parts after confirming env vars work
 var con = mysql.createConnection({
-    host: 'localhost',
-    user: "root",
-    password: "Hashtag@123",
-    database: 'webauthn_passkey'
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "Hashtag@123",
+    database: process.env.DB_Name || 'webauthn_passkey'
 });
 
 con.connect(function(err, result) {
@@ -29,6 +36,39 @@ con.connect(function(err, result) {
     }
     console.log('Connected to Database');
 });
+
+// JWT token generation functions
+const generateAccessToken = (email, userId) => {
+  return jwt.sign(
+    { email, userId },
+    privateKey,
+    { algorithm: 'RS256', expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY }
+  );
+};
+
+const generateRefreshToken = (email, userId) => {
+  return jwt.sign(
+    { email, userId },
+    privateKey,
+    { algorithm: 'RS256', expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY }
+  );
+};
+
+// middleware to authenticate JWT tokens
+const authenticateToken = (req, res, next) => {
+    const token = req.cookies.accessToken;
+
+    if (!token) return res.sendStatus(401).json({ error: 'Access token missing' });
+
+    try {
+        const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+        req.user = decoded;
+        next();
+    }
+    catch (err) {
+        return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+};
 
 app.post('/webauthn/register', (req, res) => {
     const { email } = req.body;
@@ -360,18 +400,33 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
                 console.log('User data updated with new counter:', newCounter);
                 
                 // Generate a JWT token for session persistence
-                const token = jwt.sign(
+                const accessToken = jwt.sign(
                     { email: email, userId: results[0].user_id },
-                    'your-secret-key-change-this',
-                    { expiresIn: '7d' }
+                    privateKey,
+                    { algorithm: 'RS256', expiresIn: '15m' }
+                );
+                //note: 1d is just an example for testing purposes, industry standard seems to be between 7-30 days
+                const refreshToken = jwt.sign(
+                    { email: email, userId: results[0].user_id },
+                    privateKey,
+                    { algorithm: 'RS256', expiresIn: '1d' }
                 );
                 
-                // Send success response with token
-                res.json({ 
-                    success: true,
-                    message: 'Authentication successful',
-                    token: token
+                res.cookie('accessToken', accessToken, {
+                    httpOnly: true,
+                    secure: false, // Set to true if using HTTPS
+                    sameSite: 'Lax',
+                    maxAge: 15 * 60 * 1000 // 15 minutes
                 });
+
+                res.cookie('refreshToken', refreshToken, {
+                    httpOnly: true,
+                    secure: false, // Set to true if using HTTPS
+                    sameSite: 'Lax',
+                    maxAge: 24 * 60 * 60 * 1000 // 1 day
+                });
+
+                return res.json({ success: true });
             });
         } catch (error) {
             console.error('Authentication verification error:', error);
@@ -384,19 +439,19 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
 });
 
 app.listen(5200, () => {
-    console.log('Server running on port 5200...');
+    console.log(`Server running on port ${process.env.PORT || 5200}...`);
 });
 
 // Verify token endpoint for session persistence
 app.post('/webauthn/verify-token', (req, res) => {
-    const { token } = req.body;
+    const token = req.cookies.accessToken;
     
     if (!token) {
         return res.status(400).json({ success: false, error: 'No token provided' });
     }
     
     try {
-        const decoded = jwt.verify(token, 'your-secret-key-change-this');
+        const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
         return res.json({ 
             success: true, 
             email: decoded.email,
@@ -407,10 +462,47 @@ app.post('/webauthn/verify-token', (req, res) => {
     }
 });
 
-app.get('/test', (req, res) => {
-    res.send('Backend is alive!');
+app.post('/webauthn/refresh-token', (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        return res.status(400).json({ success: false, error: 'No refresh token provided' });
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, publicKey, { algorithms: ['RS256'] });
+
+        // Generate a new access token
+        const newAccessToken = generateAccessToken(decoded.email, decoded.userId);
+
+        res.cookie('accessToken', newAccessToken, {
+            httpOnly: true,
+            secure: false, // Set to true if using HTTPS
+            sameSite: 'Lax',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.json({ success: true});
+    } catch (error) {
+        console.error('Refresh token verification failed:', error);
+        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
 });
 
+// Logout endpoint to clear cookies
+app.post('/logout', (req, res) => {
+    res.clearCookie('accessToken', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+    });
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+    });
+    res.json({ success: true, message: 'Logged out successfully' });
+});
 
 //add this for switching to production
 const path = require('path');

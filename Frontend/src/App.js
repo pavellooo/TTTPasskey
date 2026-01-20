@@ -7,51 +7,56 @@ import Board from './component/Board';
 import ProtectedRoute from './component/ProtectedRoute';
 import LandingPage from './component/LandingPage.js';
 
+// IMPORTANT: set axios defaults once
+axios.defaults.withCredentials = true;
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   
-  // Check for stored token on app load
+  // Check authentication status on app load
   useEffect(() => {
-    const checkToken = async () => {
-      const token = localStorage.getItem('authToken');
-      const storedEmail = localStorage.getItem('userEmail');
-      console.log('Checking for stored token:', token ? 'Found' : 'Not found');
-      
-      if (token) {
-        try {
-          // Verify the token is still valid
-          const response = await axios.post('http://localhost:5200/webauthn/verify-token', { token });
-          console.log('Token verification response:', response.data);
-          if (response.data.success) {
-            console.log('Token is valid, setting authenticated to true');
-            setIsAuthenticated(true);
-            setUserEmail(storedEmail || response.data.email);
-          } else {
-            // Token is invalid, remove it
-            console.log('Token verification failed, removing token');
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userEmail');
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userEmail');
+    const checkAuth = async () => {
+      try {
+        const response = await axios.post(
+          'http://localhost:5200/webauthn/verify-token',
+          {}, // no body — cookie is used
+          { withCredentials: true }
+        );
+
+        if (response.data.success) {
+          setIsAuthenticated(true);
+          setUserEmail(response.data.email);
+        } else {
+          setIsAuthenticated(false);
+          setUserEmail('');
         }
+      } catch (error) {
+        setIsAuthenticated(false);
+        setUserEmail('');
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
-    
-    checkToken();
+
+    checkAuth();
   }, []);
   
   // Logout function to clear token and authentication state
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userEmail');
-    setIsAuthenticated(false);
-    setUserEmail('');
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        'http://localhost:5200/logout',
+        {},
+        { withCredentials: true }
+      );
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      setIsAuthenticated(false);
+      setUserEmail('');
+    }
   };
   
   if (isLoading) {

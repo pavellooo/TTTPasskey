@@ -34,7 +34,10 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     setIsLoading(true);
     
     try {
-      const { data: publicKeyCredentialCreationOptions } = await axios.post('http://localhost:5200/webauthn/register', { email });
+      const { data: publicKeyCredentialCreationOptions } = await axios.post(
+        'http://localhost:5200/webauthn/register', 
+        { email },
+      );
 
       const publicKeyCredentialCreationOptionsParsed = {
         challenge: base64UrlToUint8Array(publicKeyCredentialCreationOptions.challenge),
@@ -56,6 +59,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
       await axios.post('http://localhost:5200/webauthn/register/complete', {
         email,
         credential,
+        
       });
 
       window.alert('Registration successful');
@@ -82,7 +86,8 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     try {
       const { data: publicKeyCredentialRequestOptions } = await axios.post(
         'http://localhost:5200/webauthn/authenticate',
-        { email }
+        { email },
+        { withCredentials: true }
       );
 
       const publicKeyCredentialRequestOptionsParsed = {
@@ -115,7 +120,8 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
 
       const response= await axios.post('http://localhost:5200/webauthn/authenticate/complete', {
         email,
-        assertion: assertionResponse
+        assertion: assertionResponse,
+      }, { withCredentials: true
       });
 
       if (response.data.success) {

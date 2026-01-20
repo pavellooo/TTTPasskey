@@ -12,7 +12,7 @@ export default function Board({ username, onLogout }) {
   const location = useLocation();
 
   // Use the username prop if provided, otherwise fall back to location state or default
-  const displayUsername = username || location.state?.username || "Player";
+  const displayUsername = username ||  "Player";
   
   // State to control welcome message visibility
   const [showWelcome, setShowWelcome] = useState(true);
@@ -32,8 +32,8 @@ export default function Board({ username, onLogout }) {
   }
 
   function handleLogout() {
-    localStorage.removeItem('authToken');
-    navigate('/'); // Redirect to login page
+    onLogout();
+    navigate('/');
   }
 
   function handleClick(i) {
