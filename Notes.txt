@@ -109,3 +109,37 @@ In the next week, work on figuring out if JWT is the right way to manage the ses
 In real distributed servers, there is often 1 authentication server that keeps the private key and the rest use the public key to verify.
 -converted and refactored code to use cookies. 
 Ideally, it also should have HTTPS instead of HTTP, but that will require a valid SSL certificate and converting server over. Need to do more research first.
+
+
+1/21:
+Starting to gather/categorize some open-source web apps for potential research
+Three main categories I am searching for: SPA (react, vue, angular), SSR (express, rails, php, etc.), and hybrid (nextjs)
+
+    SPA (we already did one of this category, but still helpful to look at other examples)
+    Search terms: "react express authentication github", "mern authentication open source", "react jwt auth example"
+https://github.com/bezkoder/react-js-login-registration-hooks/tree/master
+-SPA with JWT and httpOnly cookie
+https://github.com/bajuddin15/notesmaker-mern/tree/main
+-SPA with MERN stack
+
+    Hybrid
+    Search terms: "nextjs authentication password", "nextjs auth example credentials", "nextjs login session cookie"
+https://github.com/Mohammed-Abdelhady/nextjs-nestjs-oauth-rbac-boilerplate
+-This one is very complex, but is a good hybrid (nextjs) example
+https://github.com/jsguerra/nextjs-credentials-example/tree/main
+-very simple nextjs password authentication example.
+https://github.com/valqelyan/next-auth
+-Another relatively simple nextjs authentication system. However, it uses a google-associated system. May be interesting to experiment with using passkey on this app.
+
+    SSR
+    Search terms: "node express login session", "express server side rendering authentication"
+https://github.com/SajjanKarn/login_register_system_node
+-SSR, uses express and nodejs. Extremely simple and bare-bones, and has a youtube tutorial on how it was made. Very good candidate
+https://github.com/kjalnes/user-login-sessions/tree/master
+-Also SSR with express and nodejs, but it also includes React. Very simple JWT token login app. Need to check to make sure it is SSR, but is a good candidate
+
+    Other
+https://github.com/instantcommerce/next-password-protect
+-this isn't what we were looking for, but is a library to add a password prompt page to a nextjs app. Might be interesting to convert to a passkey prompt library. 
+
+
