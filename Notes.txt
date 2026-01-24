@@ -143,3 +143,10 @@ https://github.com/instantcommerce/next-password-protect
 -this isn't what we were looking for, but is a library to add a password prompt page to a nextjs app. Might be interesting to convert to a passkey prompt library. 
 
 
+1/24/26 meeting
+-try to secure local storage. In paper, it is okay to say something like "we did this, but ideally this part is left"
+-can try to host this one a public server. We can do AWS, probably later
+-for paper writing, lets focus on localhost for now. If the switch to https is possible, it is better.
+-Let's do classical SSR, and find an app uses password-based authentication to unlock some other thing. 
+-Might be best if I find an SPA web app with password-based authentication, and convert. Raj's project was adding passkey to a web app with no authentication. 
+-main focus is to finish implementation of current one, and write paper. That is the goal.
