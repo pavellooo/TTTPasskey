@@ -20,7 +20,7 @@ function App() {
     const checkAuth = async () => {
       try {
         const response = await axios.post(
-          'http://localhost:5200/webauthn/verify-token',
+          'https://localhost:5200/webauthn/verify-token',
           {}, // no body — cookie is used
           { withCredentials: true }
         );
@@ -47,7 +47,7 @@ function App() {
   const handleLogout = async () => {
     try {
       await axios.post(
-        'http://localhost:5200/logout',
+        'https://localhost:5200/logout',
         {},
         { withCredentials: true }
       );

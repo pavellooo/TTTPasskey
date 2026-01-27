@@ -150,3 +150,10 @@ https://github.com/instantcommerce/next-password-protect
 -Let's do classical SSR, and find an app uses password-based authentication to unlock some other thing. 
 -Might be best if I find an SPA web app with password-based authentication, and convert. Raj's project was adding passkey to a web app with no authentication. 
 -main focus is to finish implementation of current one, and write paper. That is the goal.
+
+    1/26 development notes:
+-moved cookie (JWT) handling to backend, and worked on switching from HTTP to HTTPS and securing the cookie and JWT.
+-HTTPS needs a digital certificate, often tied to the web domain itself. Implemented a less secure work-around for the time being, a self-signed cert
+For local development, I have the certificates in Backend/certs
+Once switching to web hosting, I can use Let's Encrypt to get the certificate/private key tied to the domain
+-I have generated instructions in "Setup references / HTTPS_SETUP.md" 

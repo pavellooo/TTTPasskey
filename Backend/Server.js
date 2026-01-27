@@ -7,6 +7,8 @@ const mysql = require('mysql2');
 const base64url = require('base64url');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+const https = require('https');
+const path = require('path');
 const cookieParser = require('cookie-parser')
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
@@ -169,7 +171,7 @@ app.post('/webauthn/register/complete', (req, res) => {
             const verification = await verifyRegistrationResponse({
                 response: parsedCredential,
                 expectedChallenge: storedChallenge,
-                expectedOrigin: 'http://localhost:5200', //CHANGED TO MATCH BACKEND PORT
+                expectedOrigin: 'https://localhost:5200', //CHANGED TO MATCH BACKEND PORT
                 expectedRPID: 'localhost',
             });
 
@@ -372,7 +374,7 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
             const verification = await verifyAuthenticationResponse({
                 response: formattedAssertion,
                 expectedChallenge: storedChallenge,
-                expectedOrigin: 'http://localhost:5200', //CHANGED TO MATCH BACKEND PORT
+                expectedOrigin: 'https://localhost:5200', //CHANGED TO MATCH BACKEND PORT
                 expectedRPID: 'localhost',
                 credential: {
                     id: credentialId,
@@ -414,15 +416,15 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
                 
                 res.cookie('accessToken', accessToken, {
                     httpOnly: true,
-                    secure: false, // Set to true if using HTTPS
-                    sameSite: 'Lax',
+                    secure: true, // Updated to true for HTTPS
+                    sameSite: 'Strict', // Enhanced CSRF protection
                     maxAge: 15 * 60 * 1000 // 15 minutes
                 });
 
                 res.cookie('refreshToken', refreshToken, {
                     httpOnly: true,
-                    secure: false, // Set to true if using HTTPS
-                    sameSite: 'Lax',
+                    secure: true, // Updated to true for HTTPS
+                    sameSite: 'Strict', // Enhanced CSRF protection
                     maxAge: 24 * 60 * 60 * 1000 // 1 day
                 });
 
@@ -438,9 +440,35 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
     });
 });
 
-app.listen(5200, () => {
-    console.log(`Server running on port ${process.env.PORT || 5200}...`);
-});
+// HTTPS/HTTP Configuration
+// To use with Let's Encrypt: set SSL_CERT_PATH and SSL_KEY_PATH environment variables
+// For local development, uses self-signed certificates from ./certs/
+const sslCertPath = process.env.SSL_CERT_PATH || path.join(__dirname, 'certs', 'server.crt');
+const sslKeyPath = process.env.SSL_KEY_PATH || path.join(__dirname, 'certs', 'server.key');
+
+const port = process.env.PORT || 5200;
+
+try {
+    const certificate = fs.readFileSync(sslCertPath);
+    const privateKey = fs.readFileSync(sslKeyPath);
+    
+    const httpsOptions = {
+        key: privateKey,
+        cert: certificate
+    };
+    
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`HTTPS Server running on https://localhost:${port}...`);
+        console.log(`SSL Certificate: ${sslCertPath}`);
+        console.log(`SSL Key: ${sslKeyPath}`);
+    });
+} catch (error) {
+    console.error('Error loading SSL certificates:', error.message);
+    console.error('Make sure certificate files exist at:');
+    console.error(`  Certificate: ${sslCertPath}`);
+    console.error(`  Key: ${sslKeyPath}`);
+    process.exit(1);
+}
 
 // Verify token endpoint for session persistence
 app.post('/webauthn/verify-token', (req, res) => {
@@ -477,8 +505,8 @@ app.post('/webauthn/refresh-token', (req, res) => {
 
         res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
-            secure: false, // Set to true if using HTTPS
-            sameSite: 'Lax',
+            secure: true, // HTTPS enabled
+            sameSite: 'Strict',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
 
@@ -505,7 +533,7 @@ app.post('/logout', (req, res) => {
 });
 
 //add this for switching to production
-const path = require('path');
+//const path = require('path');
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, 'build')));
 // The "catchall" handler: for any request that doesn't

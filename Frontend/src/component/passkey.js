@@ -34,8 +34,11 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     setIsLoading(true);
     
     try {
+      console.log('Attempting to register with:', email);
+      console.log('Backend URL:', 'https://localhost:5200/webauthn/register');
+      
       const { data: publicKeyCredentialCreationOptions } = await axios.post(
-        'http://localhost:5200/webauthn/register', 
+        'https://localhost:5200/webauthn/register', 
         { email },
       );
 
@@ -56,7 +59,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
         publicKey: publicKeyCredentialCreationOptionsParsed,
       });
 
-      await axios.post('http://localhost:5200/webauthn/register/complete', {
+      await axios.post('https://localhost:5200/webauthn/register/complete', {
         email,
         credential,
         
@@ -67,8 +70,21 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
       setIsLoginView(true); // Switch to login view after successful registration
 
     } catch (error) {
-      console.error('Registration failed:', error);
-      setError('Registration failed: ' + error.message);
+      console.error('Registration failed - Full Error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error request:', error.request);
+      console.error('Error message:', error.message);
+      
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with error
+        setError('Server error: ' + error.response.data?.error || error.message);
+      } else if (error.request) {
+        // Request made but no response
+        setError('Network Error: Backend not responding. Make sure backend is running on https://localhost:5200');
+      } else {
+        setError('Registration failed: ' + error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +101,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     
     try {
       const { data: publicKeyCredentialRequestOptions } = await axios.post(
-        'http://localhost:5200/webauthn/authenticate',
+        'https://localhost:5200/webauthn/authenticate',
         { email },
         { withCredentials: true }
       );
@@ -118,19 +134,16 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
         }
       };
 
-      const response= await axios.post('http://localhost:5200/webauthn/authenticate/complete', {
+      const response = await axios.post('https://localhost:5200/webauthn/authenticate/complete', {
         email,
         assertion: assertionResponse,
-      }, { withCredentials: true
-      });
+      }, { withCredentials: true });
 
       if (response.data.success) {
-        // Store the token in localStorage for session persistence
+        // Store the token in a secure cookie for session persistence
         if (response.data.token) {
-          console.log('Storing token in localStorage:', response.data.token);
-          localStorage.setItem('authToken', response.data.token);
-          localStorage.setItem('userEmail', email);
-          console.log('Token and email stored successfully');
+          console.log('Setting token in secure cookie:', response.data.token);
+          // Removed document.cookie usage. Backend now handles secure cookies
         } else {
           console.log('No token received from backend');
         }
