@@ -157,3 +157,10 @@ https://github.com/instantcommerce/next-password-protect
 For local development, I have the certificates in Backend/certs
 Once switching to web hosting, I can use Let's Encrypt to get the certificate/private key tied to the domain
 -I have generated instructions in "Setup references / HTTPS_SETUP.md" 
+-I have discovered "Heroku" hosts websites for free (limited credit) for those with Github Education Pro (I do)
+Will experiment with that tomorrow.
+
+    1/28
+-I have signed up for the Heroku student development pack, and should receive $13 of web app hosting credit within 24 hours
+-I have also worked on the paper briefly, adding diagrams
+-worked to switch

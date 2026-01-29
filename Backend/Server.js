@@ -8,23 +8,34 @@ const base64url = require('base64url');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const path = require('path');
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
-//load JWT keys from environment variables
+// Environment configuration
+const port = process.env.PORT || 5200;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Load JWT keys from environment variables
 const privateKey = process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
 const publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
 
 const app = express();
-app.use(cors({ credentials: true })); // Allow credentials for cookies
-app.use(bodyParser.json());
-app.use(cookieParser()); // Use cookie-parser middleware
 
-//note: pretty sure this next line is redundant and can be removed. Keeping for now in case it breaks something else
-const users = {}; // Store users by email
-//this may be bad practice, note to self: remove the "|| 'name'" parts after confirming env vars work
-var con = mysql.createConnection({
+// CORS configuration
+app.use(cors({
+    origin: isProduction 
+        ? process.env.FRONTEND_URL || true
+        : 'https://localhost:5200',
+    credentials: true
+})); // use credentials for cookies
+app.use(bodyParser.json());
+app.use(cookieParser());
+
+// Database connection
+const users = {};
+const con = mysql.createConnection({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "Hashtag@123",
@@ -44,7 +55,7 @@ const generateAccessToken = (email, userId) => {
   return jwt.sign(
     { email, userId },
     privateKey,
-    { algorithm: 'RS256', expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY }
+    { algorithm: 'RS256', expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m' }
   );
 };
 
@@ -52,11 +63,11 @@ const generateRefreshToken = (email, userId) => {
   return jwt.sign(
     { email, userId },
     privateKey,
-    { algorithm: 'RS256', expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY }
+    { algorithm: 'RS256', expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY || '1d' }
   );
 };
 
-// middleware to authenticate JWT tokens
+// Middleware to authenticate JWT tokens
 const authenticateToken = (req, res, next) => {
     const token = req.cookies.accessToken;
 
@@ -72,6 +83,18 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
+// Expected origin for WebAuthn verification
+const expectedOrigin = process.env.EXPECTED_ORIGIN || 
+    (isProduction 
+        ? process.env.HEROKU_APP_URL || `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`
+        : 'https://localhost:5200');
+
+const expectedRPID = process.env.EXPECTED_RP_ID || 
+    (isProduction 
+        ? process.env.HEROKU_APP_NAME || 'herokuapp.com'
+        : 'localhost');
+
+// Endpoint to complete registration
 app.post('/webauthn/register', (req, res) => {
     const { email } = req.body;
 
@@ -118,7 +141,7 @@ app.post('/webauthn/register', (req, res) => {
                 challenge: challenge,
                 rp: {
                     name: 'Passwordless login',
-                    id: 'localhost'
+                    id: expectedRPID
                 },
                 user: {
                     id: userId,
@@ -171,8 +194,8 @@ app.post('/webauthn/register/complete', (req, res) => {
             const verification = await verifyRegistrationResponse({
                 response: parsedCredential,
                 expectedChallenge: storedChallenge,
-                expectedOrigin: 'https://localhost:5200', //CHANGED TO MATCH BACKEND PORT
-                expectedRPID: 'localhost',
+                expectedOrigin: expectedOrigin,
+                expectedRPID: expectedRPID,
             });
 
             // Extract the verification result and registration information
@@ -228,15 +251,6 @@ app.post('/webauthn/register/complete', (req, res) => {
                     
                     // Log the successful registration
                     console.log(`Credential and public key saved for ${email}`);
-                    
-                    // Only log these values if they exist
-                    if (credentialPublicKeyBase64) {
-                        console.log('Public Key (Base64):', credentialPublicKeyBase64);
-                    }
-                    
-                    if (credentialIDBase64url) {
-                        console.log('Credential ID (Base64URL):', credentialIDBase64url);
-                    }
                 });
             } else {
                 // Handle the case where verification failed
@@ -374,8 +388,8 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
             const verification = await verifyAuthenticationResponse({
                 response: formattedAssertion,
                 expectedChallenge: storedChallenge,
-                expectedOrigin: 'https://localhost:5200', //CHANGED TO MATCH BACKEND PORT
-                expectedRPID: 'localhost',
+                expectedOrigin: expectedOrigin,
+                expectedRPID: expectedRPID,
                 credential: {
                     id: credentialId,
                     publicKey: Buffer.from(publicKeyBase64, 'base64'),
@@ -401,18 +415,8 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
                 
                 console.log('User data updated with new counter:', newCounter);
                 
-                // Generate a JWT token for session persistence
-                const accessToken = jwt.sign(
-                    { email: email, userId: results[0].user_id },
-                    privateKey,
-                    { algorithm: 'RS256', expiresIn: '15m' }
-                );
-                //note: 1d is just an example for testing purposes, industry standard seems to be between 7-30 days
-                const refreshToken = jwt.sign(
-                    { email: email, userId: results[0].user_id },
-                    privateKey,
-                    { algorithm: 'RS256', expiresIn: '1d' }
-                );
+                const accessToken = generateAccessToken(email, results[0].user_id);
+                const refreshToken = generateRefreshToken(email, results[0].user_id);
                 
                 res.cookie('accessToken', accessToken, {
                     httpOnly: true,
@@ -439,36 +443,6 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
         }
     });
 });
-
-// HTTPS/HTTP Configuration
-// To use with Let's Encrypt: set SSL_CERT_PATH and SSL_KEY_PATH environment variables
-// For local development, uses self-signed certificates from ./certs/
-const sslCertPath = process.env.SSL_CERT_PATH || path.join(__dirname, 'certs', 'server.crt');
-const sslKeyPath = process.env.SSL_KEY_PATH || path.join(__dirname, 'certs', 'server.key');
-
-const port = process.env.PORT || 5200;
-
-try {
-    const certificate = fs.readFileSync(sslCertPath);
-    const privateKey = fs.readFileSync(sslKeyPath);
-    
-    const httpsOptions = {
-        key: privateKey,
-        cert: certificate
-    };
-    
-    https.createServer(httpsOptions, app).listen(port, () => {
-        console.log(`HTTPS Server running on https://localhost:${port}...`);
-        console.log(`SSL Certificate: ${sslCertPath}`);
-        console.log(`SSL Key: ${sslKeyPath}`);
-    });
-} catch (error) {
-    console.error('Error loading SSL certificates:', error.message);
-    console.error('Make sure certificate files exist at:');
-    console.error(`  Certificate: ${sslCertPath}`);
-    console.error(`  Key: ${sslKeyPath}`);
-    process.exit(1);
-}
 
 // Verify token endpoint for session persistence
 app.post('/webauthn/verify-token', (req, res) => {
@@ -518,7 +492,7 @@ app.post('/webauthn/refresh-token', (req, res) => {
 });
 
 // Logout endpoint to clear cookies
-app.post('/logout', (req, res) => {
+app.post('/webauthn/logout', (req, res) => {
     res.clearCookie('accessToken', {
         httpOnly: true,
         secure: true,
@@ -535,9 +509,50 @@ app.post('/logout', (req, res) => {
 //add this for switching to production
 //const path = require('path');
 // Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'build')));
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
+app.use(express.static(path.join(__dirname, '../Frontend/build')));
+
+// Catch-all handler for React Router
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    res.sendFile(path.join(__dirname, '../Frontend/build', 'index.html'));
 });
+
+// Server startup with environment-based HTTPS handling
+let server;
+
+if (isProduction) {
+    // Heroku handles HTTPS - use HTTP server internally
+    server = http.createServer(app);
+    server.listen(port, '0.0.0.0', () => {
+        console.log(`🚀 Production server running on port ${port}`);
+        console.log('🔒 HTTPS handled by Heroku');
+        console.log(`📍 Expected origin: ${expectedOrigin}`);
+    });
+} else {
+    // Local development with self-signed certificates
+    try {
+        const sslCertPath = process.env.SSL_CERT_PATH || path.join(__dirname, 'certs', 'server.crt');
+        const sslKeyPath = process.env.SSL_KEY_PATH || path.join(__dirname, 'certs', 'server.key');
+        
+        const certificate = fs.readFileSync(sslCertPath);
+        const certPrivateKey = fs.readFileSync(sslKeyPath);
+        
+        const httpsOptions = {
+            key: certPrivateKey,
+            cert: certificate
+        };
+        
+        server = https.createServer(httpsOptions, app);
+        server.listen(port, () => {
+            console.log(`🔧 Development HTTPS server running on https://localhost:${port}`);
+            console.log(`📍 Expected origin: ${expectedOrigin}`);
+        });
+    } catch (error) {
+        console.error('Error loading SSL certificates:', error.message);
+        console.error('Make sure certificate files exist at:');
+        console.error(`  Certificate: ${path.join(__dirname, 'certs', 'server.crt')}`);
+        console.error(`  Key: ${path.join(__dirname, 'certs', 'server.key')}`);
+        process.exit(1);
+    }
+}
+
+module.exports = server;
