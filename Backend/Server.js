@@ -533,8 +533,7 @@ app.post('/webauthn/refresh-token', (req, res) => {
     }
 });
 
-// Logout endpoint to clear cookies
-app.post('/webauthn/logout', (req, res) => {
+const clearAuthCookies = (res) => {
     res.clearCookie('accessToken', {
         httpOnly: true,
         secure: true,
@@ -547,6 +546,17 @@ app.post('/webauthn/logout', (req, res) => {
         sameSite: 'Strict',
         path: '/'
     });
+};
+
+// Logout endpoint to clear cookies
+app.post('/webauthn/logout', (req, res) => {
+    clearAuthCookies(res);
+    res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Backwards-compatible logout route
+app.post('/logout', (req, res) => {
+    clearAuthCookies(res);
     res.json({ success: true, message: 'Logged out successfully' });
 });
 
