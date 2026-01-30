@@ -2,6 +2,9 @@ import React, { useState} from 'react';
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios';
 
+const apiBase = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+const apiUrl = (path) => `${apiBase}${path}`;
+
 function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuthenticated and setUserEmail as props
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -35,10 +38,10 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     
     try {
       console.log('Attempting to register with:', email);
-      console.log('Backend URL:', 'https://localhost:5200/webauthn/register');
+      console.log('Backend URL:', apiUrl('/webauthn/register'));
       
       const { data: publicKeyCredentialCreationOptions } = await axios.post(
-        'https://localhost:5200/webauthn/register', 
+        apiUrl('/webauthn/register'), 
         { email },
       );
 
@@ -59,7 +62,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
         publicKey: publicKeyCredentialCreationOptionsParsed,
       });
 
-      await axios.post('https://localhost:5200/webauthn/register/complete', {
+      await axios.post(apiUrl('/webauthn/register/complete'), {
         email,
         credential,
         
@@ -81,7 +84,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
         setError('Server error: ' + error.response.data?.error || error.message);
       } else if (error.request) {
         // Request made but no response
-        setError('Network Error: Backend not responding. Make sure backend is running on https://localhost:5200');
+        setError(`Network Error: Backend not responding. Check REACT_APP_API_BASE_URL or backend availability at ${apiUrl('') || window.location.origin}`);
       } else {
         setError('Registration failed: ' + error.message);
       }
@@ -101,7 +104,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
     
     try {
       const { data: publicKeyCredentialRequestOptions } = await axios.post(
-        'https://localhost:5200/webauthn/authenticate',
+        apiUrl('/webauthn/authenticate'),
         { email },
         { withCredentials: true }
       );
@@ -134,7 +137,7 @@ function Passkey( { setIsAuthenticated, setUserEmail } ) { //accepting setIsAuth
         }
       };
 
-      const response = await axios.post('https://localhost:5200/webauthn/authenticate/complete', {
+      const response = await axios.post(apiUrl('/webauthn/authenticate/complete'), {
         email,
         assertion: assertionResponse,
       }, { withCredentials: true });

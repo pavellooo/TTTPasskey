@@ -10,6 +10,9 @@ import LandingPage from './component/LandingPage.js';
 // IMPORTANT: set axios defaults once
 axios.defaults.withCredentials = true;
 
+const apiBase = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+const apiUrl = (path) => `${apiBase}${path}`;
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -20,7 +23,7 @@ function App() {
     const checkAuth = async () => {
       try {
         const response = await axios.post(
-          'https://localhost:5200/webauthn/verify-token',
+          apiUrl('/webauthn/verify-token'),
           {}, // no body — cookie is used
           { withCredentials: true }
         );
@@ -47,7 +50,7 @@ function App() {
   const handleLogout = async () => {
     try {
       await axios.post(
-        'https://localhost:5200/logout',
+        apiUrl('/logout'),
         {},
         { withCredentials: true }
       );
