@@ -5,14 +5,21 @@
   "main": "Backend/Server.js",
   "scripts": {
     "start": "node Backend/Server.js",
-    "build": "cd Frontend && npm install && npm run build && cd ..",
+    "build": "cd Frontend && npm install && npm run build && cd .. && cd Backend && npm install && cd ..",
     "heroku-postbuild": "npm run build"
   },
   "engines": {
     "node": "18.x",
     "npm": "9.x"
   },
-  "keywords": ["webauthn", "passkey", "authentication"],
+  "keywords": [
+    "webauthn",
+    "passkey",
+    "authentication"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "cookieparser": "^0.1.0"
+  }
 }
