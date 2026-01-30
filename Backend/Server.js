@@ -459,15 +459,17 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
                 
                 res.cookie('accessToken', accessToken, {
                     httpOnly: true,
-                    secure: true, // Updated to true for HTTPS
-                    sameSite: 'Strict', // Enhanced CSRF protection
+                    secure: true,
+                    sameSite: 'Strict',
+                    path: '/',
                     maxAge: 15 * 60 * 1000 // 15 minutes
                 });
 
                 res.cookie('refreshToken', refreshToken, {
                     httpOnly: true,
-                    secure: true, // Updated to true for HTTPS
-                    sameSite: 'Strict', // Enhanced CSRF protection
+                    secure: true,
+                    sameSite: 'Strict',
+                    path: '/',
                     maxAge: 24 * 60 * 60 * 1000 // 1 day
                 });
 
@@ -520,6 +522,7 @@ app.post('/webauthn/refresh-token', (req, res) => {
             httpOnly: true,
             secure: true, // HTTPS enabled
             sameSite: 'Strict',
+            path: '/',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
 
@@ -536,11 +539,13 @@ app.post('/webauthn/logout', (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: 'Strict',
+        path: '/'
     });
     res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: true,
         sameSite: 'Strict',
+        path: '/'
     });
     res.json({ success: true, message: 'Logged out successfully' });
 });
