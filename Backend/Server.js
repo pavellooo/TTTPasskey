@@ -39,7 +39,7 @@ const con = mysql.createConnection({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "Hashtag@123",
-    database: process.env.DB_Name || 'webauthn_passkey'
+    database: process.env.DB_NAME || 'webauthn_passkey'
 });
 
 con.connect(function(err, result) {
