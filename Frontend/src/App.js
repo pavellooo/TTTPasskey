@@ -50,7 +50,7 @@ function App() {
   const handleLogout = async () => {
     try {
       await axios.post(
-        apiUrl('/logout'),
+        apiUrl('/webauthn/logout'),
         {},
         { withCredentials: true }
       );
