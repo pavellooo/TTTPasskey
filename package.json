@@ -5,8 +5,8 @@
   "main": "Backend/Server.js",
   "scripts": {
     "start": "node Backend/Server.js",
-    "build": "cd Frontend && npm ci && npm run build && cd .. && cd Backend && npm ci && cd ..",
-    "heroku-postbuild": "npm run build",
+    "build": "cd Frontend && npm ci && npm run build && cd ..",
+    "heroku-postbuild": "npm run build && cd Backend && npm ci && cd ..",
     "deploy": "npm run build",
     "start-backend": "node Backend/Server.js"
   },
