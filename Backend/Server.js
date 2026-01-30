@@ -11,6 +11,8 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
+const Joi = require('joi');
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
 // Environment configuration
@@ -33,13 +35,42 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// Database connection
+// Rate limiting middleware
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Stricter limit for auth endpoints - 5 attempts per 15 minutes
+    message: 'Too many authentication attempts, please try again later.',
+    skipSuccessfulRequests: true // Don't count successful requests
+});
+
+// Apply rate limiting to all routes
+app.use(generalLimiter);
+
+// Input validation schema
+const emailSchema = Joi.object({
+    email: Joi.string()
+        .email()
+        .required()
+        .messages({
+            'string.email': 'Please provide a valid email address',
+            'any.required': 'Email is required'
+        })
+});
+
+// Database connection with SSL support for production
 const users = {};
 const con = mysql.createConnection({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "Hashtag@123",
-    database: process.env.DB_NAME || 'webauthn_passkey'
+    database: process.env.DB_NAME || 'webauthn_passkey',
+    ssl: isProduction ? 'Amazon RDS' : undefined // Enable SSL in production
 });
 
 con.connect(function(err, result) {
@@ -95,16 +126,20 @@ const expectedRPID = process.env.EXPECTED_RP_ID ||
         : 'localhost');
 
 // Endpoint to complete registration
-app.post('/webauthn/register', (req, res) => {
+app.post('/webauthn/register', authLimiter, (req, res) => {
     const { email } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+    // Validate email input
+    const { error, value } = emailSchema.validate({ email });
+    if (error) {
+        return res.status(400).json({ error: error.details[0].message });
     }
+
+    const validatedEmail = value.email;
 
     // Check if the user already exists
     const checkUserQuery = `SELECT * FROM users WHERE email = ?`;
-    con.query(checkUserQuery, [email], (err, results) => {
+    con.query(checkUserQuery, [validatedEmail], (err, results) => {
         if (err) {
             console.error('Error checking user:', err);
             return res.status(500).json({ error: 'Database error' });
@@ -130,7 +165,7 @@ app.post('/webauthn/register', (req, res) => {
             INSERT INTO users (email, user_id, challenge) 
             VALUES (?, ?, ?)
         `;
-        con.query(insertUserQuery, [email, userId, challenge], (err) => {
+        con.query(insertUserQuery, [validatedEmail, userId, challenge], (err) => {
             if (err) {
                 console.error('Error storing challenge:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -145,8 +180,8 @@ app.post('/webauthn/register', (req, res) => {
                 },
                 user: {
                     id: userId,
-                    name: email,
-                    displayName: email,
+                    name: validatedEmail,
+                    displayName: validatedEmail,
                 },
                 pubKeyCredParams: [
                     { type: 'public-key', alg: -7 },
@@ -238,7 +273,7 @@ app.post('/webauthn/register/complete', (req, res) => {
                     credentialPublicKeyBase64,
                     credentialIDBase64url, 
                     initialCounter, 
-                    email
+                    validatedEmail
                 ], (dbError) => {
                     // Handle any database errors during credential storage
                     if (dbError) {
@@ -250,7 +285,7 @@ app.post('/webauthn/register/complete', (req, res) => {
                     res.json({ success: true });
                     
                     // Log the successful registration
-                    console.log(`Credential and public key saved for ${email}`);
+                    console.log(`Credential and public key saved for ${validatedEmail}`);
                 });
             } else {
                 // Handle the case where verification failed
@@ -266,12 +301,16 @@ app.post('/webauthn/register/complete', (req, res) => {
 });
 
 // Begin authentication
-app.post('/webauthn/authenticate', (req, res) => {
+app.post('/webauthn/authenticate', authLimiter, (req, res) => {
     const { email } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+    // Validate email input
+    const { error, value } = emailSchema.validate({ email });
+    if (error) {
+        return res.status(400).json({ error: error.details[0].message });
     }
+
+    const validatedEmail = value.email;
 
     // Generate a new challenge
     const challengeBuffer = crypto.randomBytes(32);
@@ -281,7 +320,7 @@ app.post('/webauthn/authenticate', (req, res) => {
 
     // Store challenge in database
     const updateChallengeQuery = `UPDATE users SET challenge = ? WHERE email = ?`;
-    con.query(updateChallengeQuery, [challenge, email], (err) => {
+    con.query(updateChallengeQuery, [challenge, validatedEmail], (err) => {
         if (err) {
             console.error('Error updating challenge:', err);
             return res.status(500).json({ error: 'Database error' });
@@ -289,7 +328,7 @@ app.post('/webauthn/authenticate', (req, res) => {
 
         // Retrieve the credential ID for this user
         const getCredentialQuery = `SELECT credential_id FROM users WHERE email = ?`;
-        con.query(getCredentialQuery, [email], (err, results) => {
+        con.query(getCredentialQuery, [validatedEmail], (err, results) => {
             if (err || results.length === 0) {
                 console.error('Error fetching credential ID:', err);
                 return res.status(400).json({ error: 'User not found or not registered' });
