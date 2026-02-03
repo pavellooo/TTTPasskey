@@ -25,6 +25,9 @@ const publicKey = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
 
 const app = express();
 
+// Trust proxy - required for Heroku to get real IP addresses
+app.set('trust proxy', 1);
+
 // CORS configuration
 app.use(cors({
     origin: isProduction 
@@ -63,22 +66,37 @@ const emailSchema = Joi.object({
         })
 });
 
-// Database connection with SSL support for production
+// Database connection pool with SSL support for production (auto-reconnects)
 const users = {};
-const con = mysql.createConnection({
+const con = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "Hashtag@123",
     database: process.env.DB_NAME || 'webauthn_passkey',
-    ssl: isProduction ? 'Amazon RDS' : undefined // Enable SSL in production
+    ssl: isProduction ? {
+        rejectUnauthorized: true
+    } : undefined, // Enable SSL in production
+    connectionLimit: 10,
+    waitForConnections: true,
+    queueLimit: 0
 });
 
-con.connect(function(err, result) {
+// Test database connection
+con.getConnection(function(err, connection) {
     if (err) {
         console.log('Error connecting to database');
         return;
     }
     console.log('Connected to Database');
+    connection.release();
+});
+
+// Handle pool errors
+con.on('error', (err) => {
+    console.error('Database pool error:', err);
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+        console.log('Database connection lost. Pool will reconnect automatically.');
+    }
 });
 
 // JWT token generation functions
