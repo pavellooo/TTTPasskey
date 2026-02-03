@@ -74,8 +74,8 @@ const con = mysql.createPool({
     password: process.env.DB_PASSWORD || "Hashtag@123",
     database: process.env.DB_NAME || 'webauthn_passkey',
     ssl: isProduction ? {
-        rejectUnauthorized: true
-    } : undefined, // Enable SSL in production
+        rejectUnauthorized: false  // JawsDB uses self-signed certificates
+    } : undefined,
     connectionLimit: 10,
     waitForConnections: true,
     queueLimit: 0
