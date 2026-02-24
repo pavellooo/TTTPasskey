@@ -291,7 +291,7 @@ app.post('/webauthn/register/complete', (req, res) => {
                     credentialPublicKeyBase64,
                     credentialIDBase64url, 
                     initialCounter, 
-                    validatedEmail
+                    email
                 ], (dbError) => {
                     // Handle any database errors during credential storage
                     if (dbError) {
@@ -303,17 +303,27 @@ app.post('/webauthn/register/complete', (req, res) => {
                     res.json({ success: true });
                     
                     // Log the successful registration
-                    console.log(`Credential and public key saved for ${validatedEmail}`);
+                    console.log(`Credential and public key saved for ${email}`);
                 });
             } else {
-                // Handle the case where verification failed
+                // Handle the case where verification failed - delete the user
                 console.error('Registration verification failed');
-                return res.status(400).json({ error: 'Registration verification failed' });
+                con.query('DELETE FROM users WHERE email = ?', [email], (deleteErr) => {
+                    if (deleteErr) {
+                        console.error('Error deleting user after failed verification:', deleteErr);
+                    }
+                    return res.status(400).json({ error: 'Registration verification failed' });
+                });
             }
         } catch (verificationError) {
-            // Handle any errors that occurred during verification
+            // Handle any errors that occurred during verification - delete the user
             console.error('Verification error:', verificationError);
-            return res.status(400).json({ error: 'Verification error' });
+            con.query('DELETE FROM users WHERE email = ?', [email], (deleteErr) => {
+                if (deleteErr) {
+                    console.error('Error deleting user after verification error:', deleteErr);
+                }
+                return res.status(400).json({ error: 'Verification error' });
+            });
         }
     });
 });
