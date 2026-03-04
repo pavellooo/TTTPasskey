@@ -5,6 +5,9 @@ A web application exploring the WebAuthn passkey authentication flow integrated 
 It is currently deployed using Heroku at the following URL:
 https://passkey-tictactoe-spa-f5b6f75d5241.herokuapp.com
 
+Shortened URL:
+https://tinyurl.com/TTTSPA
+
 ## Project Overview
 
 This is a full-stack application with:
