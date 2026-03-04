@@ -87,7 +87,7 @@ This project is configured for easy deployment to Heroku using the provided `Pro
    heroku create your-app-name
    ```
 
-2. **Configure environment variables** (if needed):
+2. **Configure environment variables** (via command line or on Heroku dashboard):
    ```bash
    heroku config:set VARIABLE_NAME=value
    ```

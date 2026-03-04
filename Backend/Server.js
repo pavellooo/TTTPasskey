@@ -163,6 +163,11 @@ app.post('/webauthn/register', authLimiter, (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
 
+        if (!results) {
+            console.error('Invalid database response');
+            return res.status(500).json({ error: 'Database error' });
+        }
+
         if (results.length > 0) {
             // If user already exists, return a message
             console.error('Email already exists');
@@ -235,6 +240,11 @@ app.post('/webauthn/register/complete', (req, res) => {
             return res.status(400).json({ error: 'Database error' });
         }
        
+        if (!results) {
+            console.error('Invalid database response');
+            return res.status(500).json({ error: 'Database error' });
+        }
+       
         if (results.length === 0 || !results[0].challenge) {
             console.error('No challenge found for user');
             return res.status(400).json({ error: 'Invalid authentication request' });
@@ -263,22 +273,37 @@ app.post('/webauthn/register/complete', (req, res) => {
                     )
                 );
                 
-                let credentialPublicKeyBase64 = null;
-                let credentialIDBase64url = null;
-                const initialCounter = 0;
-                
-                // CHANGE #1: Store the credential ID directly in base64url format
-                if (registrationInfo.credential && registrationInfo.credential.id) {
-                    credentialIDBase64url = registrationInfo.credential.id;
+                // Validate that required credential data exists
+                if (!registrationInfo.credential || 
+                    !registrationInfo.credential.id || 
+                    !registrationInfo.credential.publicKey) {
+                    console.error('Missing required credential data in registrationInfo');
+                    con.query('DELETE FROM users WHERE email = ?', [email], (deleteErr) => {
+                        if (deleteErr) {
+                            console.error('Error deleting user after missing credential data:', deleteErr);
+                        }
+                    });
+                    return res.status(400).json({ error: 'Registration failed: incomplete credential data' });
                 }
                 
-                // Convert the public key to base64 if it exists
-                if (registrationInfo.credential && registrationInfo.credential.publicKey) {
-                    try {
-                        credentialPublicKeyBase64 = Buffer.from(registrationInfo.credential.publicKey).toString('base64');
-                    } catch (error) {
-                        console.error('Error converting publicKey to base64:', error);
-                    }
+                const initialCounter = 0;
+                let credentialPublicKeyBase64;
+                let credentialIDBase64url;
+                
+                // Store the credential ID directly in base64url format
+                credentialIDBase64url = registrationInfo.credential.id;
+                
+                // Convert the public key to base64
+                try {
+                    credentialPublicKeyBase64 = Buffer.from(registrationInfo.credential.publicKey).toString('base64');
+                } catch (error) {
+                    console.error('Error converting publicKey to base64:', error);
+                    con.query('DELETE FROM users WHERE email = ?', [email], (deleteErr) => {
+                        if (deleteErr) {
+                            console.error('Error deleting user after publicKey conversion error:', deleteErr);
+                        }
+                    });
+                    return res.status(400).json({ error: 'Registration failed: invalid public key' });
                 }
 
                 // Define the SQL query
@@ -357,7 +382,7 @@ app.post('/webauthn/authenticate', authLimiter, (req, res) => {
         // Retrieve the credential ID for this user
         const getCredentialQuery = `SELECT credential_id FROM users WHERE email = ?`;
         con.query(getCredentialQuery, [validatedEmail], (err, results) => {
-            if (err || results.length === 0) {
+            if (err || !results || results.length === 0) {
                 console.error('Error fetching credential ID:', err);
                 return res.status(400).json({ error: 'User not found or not registered' });
             }
@@ -399,7 +424,7 @@ app.post('/webauthn/authenticate/complete', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
 
-        if (results.length === 0) {
+        if (!results || results.length === 0) {
             console.error('User not found:', email);
             return res.status(400).json({ error: 'User not found' });
         }
