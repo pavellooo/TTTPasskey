@@ -1,6 +1,6 @@
 # Project Passkey - Tic Tac Toe
 
-A web application exploring the WebAuthn passkey authentication flow integrated with a Tic Tac Toe game. This project demonstrates secure, passwordless authentication using the FIDO2 standard.
+This project utilizes a web application to test the WebAuthn-based passkey authentication flow. The web application is basically the "Tic Tac Toe" game, which a user can play against the system. Our focus is to integrate the "passkey authentication flow" with this web application. This project demonstrates secure, passwordless authentication using the FIDO2 standard.
 
 It is currently deployed using Heroku at the following URL:
 https://passkey-tictactoe-spa-f5b6f75d5241.herokuapp.com
