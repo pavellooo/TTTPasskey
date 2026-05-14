@@ -1,216 +1,268 @@
 # Project Passkey - Tic Tac Toe
 
-This project utilizes a web application to implement and test the "passkey authentication" flow. The web application is basically the "Tic Tac Toe" game, which a user can play against the system. Our specific focus is to integrate the WebAuthn-based passkey authentication flow with this web application. This project demonstrates secure, passwordless authentication using the FIDO2 standard.
+This project implements a "passkey authentication" flow integrated with a Tic Tac Toe web application. Users can play against the system while testing secure, passwordless FIDO2 WebAuthn authentication.
 
-It is currently deployed using Heroku at the following URL:
-https://passkey-tictactoe-spa-f5b6f75d5241.herokuapp.com
-
-Shortened URL:
-https://tinyurl.com/TTTSPA
+**Live Demo**: https://passkey-tictactoe-spa-f5b6f75d5241.herokuapp.com  
+**Short URL**: https://tinyurl.com/TTTSPA
 
 ## Project Overview
 
 This is a full-stack application with:
 - **Frontend**: React-based single-page application (SPA)
-- **Backend**: Node.js/Express server with WebAuthn authentication
-- **Database**: MySQL for user credentials and sessions
-- **Passkey Authentication**: Secure FIDO2 WebAuthn implementation
+- **Backend**: Node.js/Express server with WebAuthn passkey authentication
+- **Database**: MySQL for user credentials and passkey data
+- **Authentication**: Secure FIDO2 WebAuthn implementation (passwordless login)
+- **Deployment**: Configured for Heroku with Procfile
 
 ## Prerequisites
 
-- Node.js 20.x
-- npm 10.x
-- MySQL server (for database)
-- Heroku CLI (for deployment)
+Before you begin, ensure you have installed:
+- **Node.js** 20.x or higher ([download](https://nodejs.org/))
+- **npm** 10.x or higher (comes with Node.js)
+- **MySQL Server** 8.0+ ([download](https://www.mysql.com/downloads/))
+  - Recommended: [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) or [XAMPP](https://www.apachefriends.org/) (includes MySQL)
+- **Git** (for version control)
+- **Heroku CLI** (optional, only if deploying to Heroku)
 
 ## Project Structure
 
 ```
-├── Frontend/          # React application
-├── Backend/           # Express server
-├── build-and-deploy.js # Build automation script
-├── Procfile           # Heroku deployment configuration
-└── package.json       # Root package configuration
+├── Frontend/              # React application (SPA)
+├── Backend/               # Express.js server with WebAuthn
+│   ├── Server.js          # Main server file
+│   ├── package.json       # Backend dependencies
+│   ├── .env.example       # Environment variables template
+│   └── certs/             # SSL certificates (for local HTTPS)
+├── Setup references/      # Database setup scripts
+├── build-and-deploy.js    # Build automation script
+├── Procfile              # Heroku deployment config
+└── package.json          # Root package config
 ```
 
 ## Getting Started
 
-### Local Development
+### Step 1: Clone and Install Dependencies
 
-1. **Install root dependencies**:
-   ```bash
-   npm ci
-   ```
+```bash
+# Clone the repository (if you haven't already)
+git clone <your-repo-url>
+cd TTTPasskey
 
-2. **Install Frontend dependencies** (in your IDE or terminal):
-   ```bash
-   cd Frontend
-   npm ci
-   npm start
-   ```
+# Install root-level dependencies
+npm ci
+```
 
-3. **Install and run Backend** (in another terminal):
+### Step 2: Configure Environment Variables
+
+1. **Navigate to the Backend folder**:
    ```bash
    cd Backend
-   npm ci
-   npm start
    ```
 
-The frontend will be available at `http://localhost:3000` and the backend API will be running on the port configured in `Backend/Server.js`.
+2. **Create `.env` file from the template**:
+   
+   Note that there may already be a `.env` file in the Backend folder for testing purposes. If you want to use that, you can skip this step. However, it is recommended that you create your own `.env` file with your own credentials and JWT keys.
 
-## Build and Deployment
+   **On Windows (PowerShell)**:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+   
+   **On macOS/Linux**:
+   ```bash
+   cp .env.example .env
+   ```
 
-### Building for Production
+3. **Edit the `.env` file** with your configuration. At minimum, you need to set:
+   - `DB_PASSWORD`: Your MySQL root password
+   - JWT keys (see below)
 
-To build the frontend and prepare for deployment:
+   See [Environment Variables Reference](#environment-variables) for full details.
+
+### Step 3: Generate JWT Keys
+
+The application uses RSA JWT tokens for authentication. You need to generate a private and public key pair:
+
+1. **On Windows (PowerShell)** - Install OpenSSL first:
+   ```powershell
+   # If you have Git Bash installed, you can use it:
+   # "C:\Program Files\Git\bin\bash.exe" -c "openssl genrsa -out private.pem 2048 && openssl rsa -in private.pem -pubout -out public.pem"
+   
+   # Or use WSL:
+   wsl openssl genrsa -out private.pem 2048
+   wsl openssl rsa -in private.pem -pubout -out public.pem
+   ```
+
+2. **On macOS/Linux**:
+   ```bash
+   openssl genrsa -out private.pem 2048
+   openssl rsa -in private.pem -pubout -out public.pem
+   ```
+
+3. **Add the keys to `.env`**:
+   - Open `private.pem` and copy its contents
+   - In `.env`, set `JWT_PRIVATE_KEY="<contents of private.pem>"`
+   - Open `public.pem` and copy its contents
+   - In `.env`, set `JWT_PUBLIC_KEY="<contents of public.pem>"`
+   - Remember to preserve the `\n` characters in the newlines
+
+   Example:
+   ```
+   JWT_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
+   JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhk...\n-----END PUBLIC KEY-----"
+   ```
+
+### Step 4: Set Up MySQL Database
+
+See [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md) for detailed MySQL configuration, database creation, and troubleshooting.
+
+### Step 5: Install Backend Dependencies
+
+Still in the `Backend` folder:
+```bash
+npm ci
+```
+
+### Step 6: Run Local Development
+
+You'll need **two terminal windows** for local development:
+
+**Terminal 1 - Start the Backend**:
+```bash
+cd Backend
+npm start
+```
+
+You should see:
+```
+Server running on port 5200...
+Connected to Database
+```
+
+**Terminal 2 - Start the Frontend** (from root directory):
+```bash
+cd Frontend
+npm ci
+npm start
+```
+
+You should see:
+```
+Compiled successfully!
+You can now view frontend in the browser.
+
+Local:            http://localhost:3000
+```
+
+**Access the application**: Open your browser to `http://localhost:3000`
+
+## Quick Reference
+
+### Environment Variables
+
+Key `.env` variables in `Backend/`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `NODE_ENV` | `development` | Set to `production` for production |
+| `PORT` | `5200` | Backend server port |
+| `DB_HOST` | `localhost` | MySQL server host |
+| `DB_USER` | `root` | MySQL username |
+| `DB_PASSWORD` | `Hashtag@123` | MySQL password |
+| `DB_NAME` | `webauthn_passkey` | Database name |
+| `JWT_PRIVATE_KEY` | *(required)* | RSA private key (generate with OpenSSL) |
+| `JWT_PUBLIC_KEY` | *(required)* | RSA public key |
+| `EXPECTED_RP_ID` | `localhost` | WebAuthn domain (for production: `your-app.herokuapp.com`) |
+| `EXPECTED_ORIGIN` | `https://localhost:5200` | CORS origin (for production: your Heroku URL) |
+
+## Building for Production
+
+### Build and Prepare for Deployment
+
+To build the frontend and prepare everything for production:
 
 ```bash
 npm run deploy
 ```
 
 This command:
-1. Installs and builds the React frontend
-2. Copies the built frontend files to the backend `build/` directory
-3. The backend serves the frontend static files
+1. Installs frontend dependencies
+2. Builds the React application for production
+3. Copies the built files to `Backend/build/`
+4. Backend will serve the frontend as static files
 
-Alternatively, you can use the build-and-deploy.js script directly:
+The output will look like:
+```
+🔨 Building frontend...
+✅ Frontend built successfully
+📋 Copying build files to backend...
+✅ Deploy completed successfully!
+```
+
+Alternatively, run the build script directly:
 ```bash
 node build-and-deploy.js
 ```
 
-### Heroku Deployment
+## Heroku Deployment
 
-This project is configured for easy deployment to Heroku using the provided `Procfile`.
+### Setup Steps
 
-#### Deploy Steps:
-
-1. **Set up Heroku (first time only)**:
+1. **Login to Heroku**:
    ```bash
    heroku login
    heroku create your-app-name
    ```
 
-2. **Configure environment variables** (via command line or on Heroku dashboard):
+2. **Add MySQL database**:
    ```bash
-   heroku config:set VARIABLE_NAME=value
+   heroku addons:create cleardb:ignite
+   heroku config | grep CLEARDB_DATABASE_URL
    ```
 
-3. **Deploy to Heroku**:
+3. **Configure environment variables**:
    ```bash
+   heroku config:set DB_HOST=your-db-host.cleardb.net
+   heroku config:set DB_USER=your-db-user
+   heroku config:set DB_PASSWORD=your-db-password
+   heroku config:set DB_NAME=your-db-name
+   heroku config:set JWT_PRIVATE_KEY="<your-private-key>"
+   heroku config:set JWT_PUBLIC_KEY="<your-public-key>"
+   heroku config:set EXPECTED_RP_ID=your-app-name.herokuapp.com
+   heroku config:set EXPECTED_ORIGIN=https://your-app-name.herokuapp.com
+   heroku config:set NODE_ENV=production
+   ```
+
+4. **Initialize database and deploy**:
+   ```bash
+   # Connect to MySQL and run database setup (same SQL as MYSQL_SETUP.md)
+   mysql -h <your-host> -u <your-user> -p <your-db-name>
+   
+   # Deploy to Heroku
    git push heroku main
+   heroku logs --tail
    ```
 
-Heroku will automatically:
-- Detect Node.js project
-- Run `npm run heroku-postbuild` to build frontend and install backend dependencies
-- Start the app using the command in `Procfile` (node Backend/Server.js)
-- Serve your application at your Heroku domain
+Heroku automatically runs `npm run heroku-postbuild` to build the frontend and install backend dependencies.
 
-#### Available NPM Scripts:
+## Troubleshooting
 
-- `npm start` - Start the backend server
-- `npm run build` - Build frontend and install dependencies
-- `npm run heroku-postbuild` - Heroku build hook (auto-executed during deployment)
-- `npm run deploy` - Local build and deployment preparation
-- `npm run start-backend` - Explicitly start the backend
+| Issue | Solution |
+|-------|----------|
+| **Cannot find module 'dotenv'** | Ensure `.env` exists in `Backend/` folder. Copy `.env.example` to `.env` and restart the server. |
+| **Connection refused** (Database) | Start MySQL Server. Windows: `net start MySQL80`. macOS: `brew services start mysql-community-server`. |
+| **Unknown database** | Create the database using commands in [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md). |
+| **Invalid or expired token** | Regenerate JWT keys using OpenSSL (Step 3). Clear browser cookies and restart backend. |
+| **Port already in use** (3000/5200) | Windows: `netstat -ano \| findstr :3000`. macOS: `lsof -ti:3000 \| xargs kill -9`. Then restart the server. |
+| **CORS error** | Ensure `EXPECTED_ORIGIN` in `.env` matches your frontend URL. Restart backend. |
 
-### Environment Variables
+## Development Tips
 
-Configure the following environment variables for your Heroku app. These are used by the backend server for database connections, authentication, and other configurations.
-
-#### Setting Environment Variables on Heroku:
-
-```bash
-# Set individual variables
-heroku config:set DATABASE_URL="mysql://user:password@host:port/database"
-heroku config:set JWT_PUBLIC_KEY="your-public-key"
-heroku config:set NODE_ENV="production"
-
-# Or set multiple at once
-heroku config:set VAR1=value1 VAR2=value2 VAR3=value3
-```
-The heroku variables should follow the same names as in the [.env.example] file
-
-#### View Current Configuration:
-
-```bash
-heroku config
-```
-
-#### Common Environment Variables:
-
-These variables should be set in your `.env` file locally and in Heroku config:
-- `DATABASE_URL` - MySQL connection string
-- `JWT_SECRET` - Secret key for JWT token signing
-- `NODE_ENV` - Set to "production" for Heroku
-- `PORT` - Server port (Heroku automatically sets this)
-
-### SSL Certificates
-
-If using HTTPS with SSL certificates locally or on Heroku:
-
-#### Local Development:
-
-1. Generate self-signed certificates (for development only):
-   ```bash
-   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-   ```
-
-2. Store certificates in a `certs/` directory (excluded from git):
-   ```bash
-   mkdir certs
-   # Move your cert.pem and key.pem files here
-   ```
-
-3. Add `certs/` to `.gitignore`:
-   ```
-   certs/
-   ```
-
-Note that certs have been left in the backend for testing purposes. They are not used in the current Heroku deployment. It is highly recommended that they should be rotated often and never be uploaded to the repository.
-
-#### Heroku Deployment:
-
-For production SSL on Heroku:
-- Use Heroku's **Automatic Certificate Management** (ACM) - automatically provides free SSL certificates
-- Or configure a custom domain with your own SSL certificate through Heroku's settings
-- No need to commit certificate files to the repository
-
-- Heroku has many database management addons to choose from with different pricing tiers. Choose one that is compatible with MySQL. JawsDB free tier provides 5 megabytes of storage and a very simple setup guide, so that is what we chose to use.
-
-#### .gitignore:
-
-Create or update `.gitignore` to exclude sensitive files and generated builds:
-
-```
-# Dependencies
-node_modules/
-
-# Generated builds
-Frontend/build/
-Backend/build/
-
-# Environment variables
-.env
-.env.local
-
-# SSL Certificates
-certs/
-
-# IDE
-.DS_Store
-.vscode/
-.idea/
-```
-
-## Database Setup
-
-Refer to [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md) for MySQL database configuration and schema setup.
-
-## Technology Stack
-
-- **Frontend**: React, CSS
-- **Backend**: Express.js, Node.js
+- **Hot reload**: Frontend dev server automatically reloads when you save changes
+- **Backend changes**: Restart `npm start` to see changes
+- **Database queries**: Use MySQL Workbench or command line to view/modify data
+- **JWT debugging**: Decode tokens at [jwt.io](https://jwt.io) to inspect claims
+- **API testing**: Use Postman or VS Code REST Client to test endpoints
 - **Authentication**: @simplewebauthn/server (FIDO2/WebAuthn)
 - **Database**: MySQL
 - **Security**: JWT, CORS, Rate Limiting, Cookie Parser
