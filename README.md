@@ -159,6 +159,21 @@ Local:            http://localhost:3000
 
 **Access the application**: Open your browser to `http://localhost:3000`
 
+> **Two Ways to Run the App:**
+> 
+> **Local Development** (right now):
+> - You run two separate servers: Frontend on port 3000, Backend on port 5200
+> - This lets you test changes instantly—modify a file and the frontend automatically reloads
+> - Access the app at `http://localhost:3000`
+> 
+> **Deployment Mode** (after `npm run deploy`):
+> - You run only the Backend on port 5200
+> - The Backend contains the built frontend files (`Backend/build/`) and sends them to your browser
+> - When you visit `http://localhost:5200`, the Backend simply gives you the pre-built frontend files
+> - This mirrors how real web apps work in production—a single server delivers everything
+> 
+> **TL;DR**: Development = separate Frontend and Backend servers for fast iteration. Deployment = Backend has the built Frontend files and serves them like a real app would.
+
 ## Quick Reference
 
 ### Environment Variables
@@ -175,8 +190,8 @@ Key `.env` variables in `Backend/`:
 | `DB_NAME` | `webauthn_passkey` | Database name |
 | `JWT_PRIVATE_KEY` | *(required)* | RSA private key (generate with OpenSSL) |
 | `JWT_PUBLIC_KEY` | *(required)* | RSA public key |
-| `EXPECTED_RP_ID` | `localhost` | WebAuthn domain (for production: `your-app.herokuapp.com`) |
-| `EXPECTED_ORIGIN` | `https://localhost:5200` | CORS origin (for production: your Heroku URL) |
+| `RP_ID` | `localhost` | WebAuthn domain (for production: `your-app.herokuapp.com`) |
+| `ORIGIN` | `http://localhost:5200` | CORS origin (for production: your Heroku URL) |
 
 ## Building for Production
 
@@ -207,7 +222,35 @@ Alternatively, run the build script directly:
 node build-and-deploy.js
 ```
 
+### Run the Local Build
+
+Once the build is complete, you need to update one environment variable, then start the Backend:
+
+**Update `Backend/.env`** (important!):
+- Change `ORIGIN=http://localhost:3000` to `ORIGIN=http://localhost:5200`
+- This tells the Backend that it's now serving the frontend, so CORS and WebAuthn work correctly
+
+Then start the Backend:
+```bash
+cd Backend
+npm start
+```
+
+Open your browser to `http://localhost:5200`. The Backend automatically serves the built frontend files from `Backend/build/`.
+
 ## Heroku Deployment
+
+### Environment Variables for Production
+
+Before deploying to Heroku, update `Backend/.env` with your production values:
+
+```env
+NODE_ENV=production
+RP_ID=your-app-name.herokuapp.com
+ORIGIN=https://your-app-name.herokuapp.com
+```
+
+These values are critical—WebAuthn and CORS will reject requests from mismatched domains.
 
 ### Setup Steps
 
@@ -231,8 +274,8 @@ node build-and-deploy.js
    heroku config:set DB_NAME=your-db-name
    heroku config:set JWT_PRIVATE_KEY="<your-private-key>"
    heroku config:set JWT_PUBLIC_KEY="<your-public-key>"
-   heroku config:set EXPECTED_RP_ID=your-app-name.herokuapp.com
-   heroku config:set EXPECTED_ORIGIN=https://your-app-name.herokuapp.com
+   heroku config:set RP_ID=your-app-name.herokuapp.com
+   heroku config:set ORIGIN=https://your-app-name.herokuapp.com
    heroku config:set NODE_ENV=production
    ```
 
@@ -257,7 +300,7 @@ Heroku automatically runs `npm run heroku-postbuild` to build the frontend and i
 | **Unknown database** | Create the database using commands in [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md). |
 | **Invalid or expired token** | Regenerate JWT keys using OpenSSL (Step 3). Clear browser cookies and restart backend. |
 | **Port already in use** (3000/5200) | Windows: `netstat -ano \| findstr :3000`. macOS: `lsof -ti:3000 \| xargs kill -9`. Then restart the server. |
-| **CORS error** | Ensure `EXPECTED_ORIGIN` in `.env` matches your frontend URL. Restart backend. |
+| **CORS error** | Ensure `ORIGIN` in `.env` matches your frontend URL. Restart backend. |
 
 ## Development Tips
 

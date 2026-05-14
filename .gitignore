@@ -34,11 +34,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-.env
+#.env
 private.key
 public.key
-Backend/.env
-Frontend/.env
 Backend/certs/
 Frontend/build/
 .vscode/
