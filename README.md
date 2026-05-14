@@ -240,56 +240,59 @@ Open your browser to `http://localhost:5200`. The Backend automatically serves t
 
 ## Heroku Deployment
 
-### Environment Variables for Production
-
-Before deploying to Heroku, update `Backend/.env` with your production values:
-
-```env
-NODE_ENV=production
-RP_ID=your-app-name.herokuapp.com
-ORIGIN=https://your-app-name.herokuapp.com
-```
-
-These values are critical—WebAuthn and CORS will reject requests from mismatched domains.
-
 ### Setup Steps
 
-1. **Login to Heroku**:
-   ```bash
-   heroku login
-   heroku create your-app-name
-   ```
+1. **Create Heroku App & Connect Git**:
+   - Go to [Heroku Dashboard](https://dashboard.heroku.com)
+   - Click "New" → "Create new app"
+   - Enter your app name (e.g., `my-passkey-app`)
+   - In the "Deploy" tab, connect your GitHub repo and enable automatic deploys
 
-2. **Add MySQL database**:
-   ```bash
-   heroku addons:create cleardb:ignite
-   heroku config | grep CLEARDB_DATABASE_URL
-   ```
+2. **Add JawsDB MySQL Add-on**:
+   - In the Heroku Dashboard, go to "Resources" tab
+   - Search for "JawsDB MySQL" in the Add-ons Marketplace
+   - Select the "Kitefin Shared" plan (free tier)
+   - Click "Attach to app"
+   - This automatically sets `JAWSDB_URL` in your config variables
+   - You may have to parse this URL to get `DB_HOST`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` for local testing
+   - Also, you can use an app such as "HeidiSQL" or "MySQL Workbench" to connect to the JawsDB instance and run the SQL setup scripts from [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md). You will have to parse the JAWSDB_URL to get the connection details for these apps.
 
-3. **Configure environment variables**:
-   ```bash
-   heroku config:set DB_HOST=your-db-host.cleardb.net
-   heroku config:set DB_USER=your-db-user
-   heroku config:set DB_PASSWORD=your-db-password
-   heroku config:set DB_NAME=your-db-name
-   heroku config:set JWT_PRIVATE_KEY="<your-private-key>"
-   heroku config:set JWT_PUBLIC_KEY="<your-public-key>"
-   heroku config:set RP_ID=your-app-name.herokuapp.com
-   heroku config:set ORIGIN=https://your-app-name.herokuapp.com
-   heroku config:set NODE_ENV=production
-   ```
+3. **Configure Environment Variables**:
+   - In the "Settings" tab, click "Reveal Config Vars"
+   - Add the following variables:
+     ```
+     NODE_ENV=production
+     JWT_PRIVATE_KEY=<your-private-key>
+     JWT_PUBLIC_KEY=<your-public-key>
+     RP_ID=your-app-name.herokuapp.com
+     ORIGIN=https://your-app-name.herokuapp.com
+     ```
+   - Heroku automatically extracts DB credentials from `JAWSDB_URL`, so you don't need to set `DB_HOST`, `DB_USER`, `DB_PASSWORD` manually
 
-4. **Initialize database and deploy**:
-   ```bash
-   # Connect to MySQL and run database setup (same SQL as MYSQL_SETUP.md)
-   mysql -h <your-host> -u <your-user> -p <your-db-name>
-   
-   # Deploy to Heroku
-   git push heroku main
-   heroku logs --tail
-   ```
+4. **Initialize Database**:
+   - Get your JawsDB connection string from the "Resources" tab (click JawsDB add-on)
+   - Connect using MySQL client and run the SQL from [Setup references/MYSQL_SETUP.md](Setup%20references/MYSQL_SETUP.md)
+   - Or use: `mysql -h <jawsdb-host> -u <user> -p<password> <database> < Setup\ references/database_setup.sql`
 
-Heroku automatically runs `npm run heroku-postbuild` to build the frontend and install backend dependencies.
+5. **Deploy**:
+   - Push to your repo: `git push origin main`
+   - Heroku automatically builds and deploys
+   - Monitor logs: `heroku logs --tail`
+
+Heroku automatically runs `npm run heroku-postbuild` to build the frontend and install dependencies.
+
+### Alternative: Vercel
+
+If Heroku removes free student benefits in the future, **Vercel** is a great alternative for hosting the frontend. Here's a quick start:
+
+1. Push your code to GitHub
+2. Go to [vercel.com](https://vercel.com) and sign in with GitHub
+3. Click "Add New Project" → select your repo
+4. Set `Root Directory` to `Frontend`
+5. Add environment variables and deploy
+6. For the Backend, consider **Railway** or **Render** (both have free tiers)
+
+See Vercel's docs for more: https://vercel.com/docs
 
 ## Troubleshooting
 
