@@ -127,9 +127,12 @@ npm ci
 
 You'll need **two terminal windows** for local development:
 
+> **Note**: If `node_modules` directories don't exist locally, they'll be automatically reinstalled when you run the commands below.
+
 **Terminal 1 - Start the Backend**:
 ```bash
 cd Backend
+npm install
 npm start
 ```
 
